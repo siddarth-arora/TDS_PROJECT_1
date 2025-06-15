@@ -96,7 +96,8 @@ def generate_llm_response(question : str, context : str):
                 "  ]\n"
                 "}\n\n"
                 "Do NOT include explanations, markdown, or extra text outside this JSON format. "
-                "If no links are relevant, return an empty links list. Keep the answer short and specific."
+                "If no links are relevant, return an empty links list. Keep the answer short and specific.",
+                "If you don't know the answer, respond with 'I don't know' and provide no links.",
         ],
         config=GenerateContentConfig(
             max_output_tokens=512,
