@@ -147,7 +147,7 @@ def answer(question: str, image: str = None):
     response = generate_llm_response(question, "\n".join(top_chunks))
     return{
         "question" : question,
-        "answer" : response,
+        "answer" : clean_gpt_response(response),
         "top_chunks" : top_chunks
     }
 
