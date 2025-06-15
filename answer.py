@@ -146,14 +146,12 @@ def answer(question: str, image: str = None):
     top_chunks = [loaded_chunks[i] for i in top_indicies]
 
     response = generate_llm_response(question, "\n".join(top_chunks))
-    return{
-        clean_gpt_response(response)
-    }
-    return{
-        "question" : question,
-        "answer" : clean_gpt_response(response),
-        "top_chunks" : top_chunks
-    }
+    return clean_gpt_response(response)
+    # return{
+    #     "question" : question,
+    #     "answer" : clean_gpt_response(response),
+    #     "top_chunks" : top_chunks
+    # }
 
 @app.post("/api/")
 async def api_answer(request : Request):
