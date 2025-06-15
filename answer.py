@@ -8,12 +8,38 @@ from google.genai import types
 from pathlib import Path
 import numpy as np
 from google.genai.types import GenerateContentConfig, HttpOptions
+from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional, List
+import json
+import logging
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 load_dotenv()
 genai_api_key = os.getenv("GENAI_API_KEY")
 aiproxy_apikey = os.getenv("AIPROXY_TOKEN")
+
+
+class QueryRequest(BaseModel):
+    question: str
+    image: Optional[str] = None
+
+class Link(BaseModel):
+    url: str
+    text: str
+
+class QueryResponse(BaseModel):
+    answer: str
+    links: List[Link]
+
+
 
 # Get embeddings for a list of texts
 def get_embedding(text: str) -> list:
@@ -60,10 +86,17 @@ def generate_llm_response(question : str, context : str):
         model="gemini-2.0-flash",
         contents=[
             f"Answer the question based on the context provided.\n\nQuestion: {question}\n\nContext: {context}",
-            "You are a helpful assistant that provides concise and accurate answers based on the provided context.",
-            "If the context does not contain enough information to answer the question, respond with 'I don't know'.",
-            "Your response should be in markdown format, with necessary formatting for code blocks, lists, and headings.",
-            "Also provide relvant links to the source material if available from the context"
+            "You are a helpful virtual TA for the TDS course. Use only the provided context. "
+                "Always respond in the following JSON format:\n\n"
+                "{\n"
+                "  \"answer\": \"<concise answer — ideally under 3 lines>\",\n"
+                "  \"links\": [\n"
+                "    {\"url\": \"<link_url>\", \"text\": \"<short description>\"},\n"
+                "    ... up to 2 links\n"
+                "  ]\n"
+                "}\n\n"
+                "Do NOT include explanations, markdown, or extra text outside this JSON format. "
+                "If no links are relevant, return an empty links list. Keep the answer short and specific."
         ],
         config=GenerateContentConfig(
             max_output_tokens=512,
@@ -73,6 +106,29 @@ def generate_llm_response(question : str, context : str):
         )
     )
     return response.text
+
+
+def clean_gpt_response(text: str) -> dict:
+    try:
+        if text.strip().startswith("```"):
+            lines = text.splitlines()
+            text = "\n".join(lines[1:-1]).strip()
+        if text.strip().startswith("{") and text.strip().endswith("}"):
+            parsed = json.loads(text)
+            for link in parsed.get("links", []):
+                if not link.get("text"):
+                    link["text"] = link.get("url", "Reference")
+            return {
+                "answer": parsed.get("answer", "").strip(),
+                "links": parsed.get("links", [])
+            }
+    except Exception:
+        logging.warning("Failed to parse GPT response as JSON", exc_info=True)
+
+    return {
+        "answer": text.strip() or "⚠ No answer generated.",
+        "links": []
+    }
 
 def answer(question: str, image: str = None):
     loaded_chunks, loaded_embeddings = load_embeddings()
@@ -91,15 +147,9 @@ def answer(question: str, image: str = None):
     response = generate_llm_response(question, "\n".join(top_chunks))
     return{
         "question" : question,
-        "response" : response,
+        "answer" : response,
         "top_chunks" : top_chunks
     }
-
-
-
-# class QuestionRequest(BaseModel):
-#     question: str
-#     image : str = None
 
 @app.post("/api/")
 async def api_answer(request : Request):
@@ -109,7 +159,6 @@ async def api_answer(request : Request):
         return answer(data.get("question"), data.get("image"))
     except Exception as e:
         return {"error": str(e)}
-
     
 
 
