@@ -3,3 +3,4 @@
 markdown
 tools-in-data-science-public
 .env
+checkpoint_embeddings.npz
