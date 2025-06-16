@@ -144,8 +144,13 @@ def answer(question: str, image: str = None):
 
     top_indicies = np.argsort(similarities)[-10:][::-1]
     top_chunks = [loaded_chunks[i] for i in top_indicies]
+    print(top_chunks)
+    context = "\n".join(chunk["text"] for chunk in top_chunks)
 
-    response = generate_llm_response(question, "\n".join(top_chunks))
+    response = generate_llm_response(question, context)
+    print(response)
+    print("\n")
+    print(clean_gpt_response(response))
     return clean_gpt_response(response)
     # return{
     #     "question" : question,
