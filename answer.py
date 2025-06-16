@@ -95,7 +95,8 @@ def generate_llm_response(question : str, context : str):
                 "    ... up to 2 links\n"
                 "  ]\n"
                 "}\n\n"
-                "Do NOT include explanations, markdown, or extra text outside this JSON format. "
+                "Do NOT include explanations, markdown, or extra text outside this JSON format. ",
+                "The answer should be readable to a human being"
                 "If no links are relevant, return an empty links list. Keep the answer short and specific.",
                 "If you don't know the answer, respond with 'I don't know' and provide no links.",
         ],
@@ -107,6 +108,7 @@ def generate_llm_response(question : str, context : str):
         )
     )
     return response.text
+
 
 
 def clean_gpt_response(text: str) -> dict:
