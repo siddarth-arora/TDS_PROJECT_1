@@ -12,6 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List
 import json
 import logging
+import base64
+import tempfile
+
 
 app = FastAPI()
 app.add_middleware(
@@ -63,13 +66,37 @@ def get_embedding(text: str) -> list:
         return []
 
 
-def get_image_description(image_path):
+# def get_image_description(image_path):
+#     client = genai.Client(api_key=genai_api_key)
+#     my_file = client.files.upload(file=image_path)
+
+#     response = client.models.generate_content(
+#         model="gemini-2.0-flash",
+#         contents=[my_file, "Describe the study-related content in this image, including headings, formulas, and the main topic if identifiable."],
+#     )
+
+#     return response.text
+
+
+def get_image_description(base64_image: str):
+    # Decode the base64 string
+    image_data = base64.b64decode(base64_image)
+
+    # Save to a temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".webp") as temp_file:
+        temp_file.write(image_data)
+        temp_file_path = temp_file.name
+
+    # Upload and get response
     client = genai.Client(api_key=genai_api_key)
-    my_file = client.files.upload(file=image_path)
+    my_file = client.files.upload(file=temp_file_path)
 
     response = client.models.generate_content(
         model="gemini-2.0-flash",
-        contents=[my_file, "Describe the study-related content in this image, including headings, formulas, and the main topic if identifiable."],
+        contents=[
+            my_file,
+            "Describe the study-related content in this image, including headings, formulas, and the main topic if identifiable."
+        ],
     )
 
     return response.text
@@ -136,7 +163,8 @@ def clean_gpt_response(text: str) -> dict:
 def answer(question: str, image: str = None):
     loaded_chunks, loaded_embeddings = load_embeddings()
     if image:
-        image_description = get_image_description(f"data:image/jpeg;base64,{image}")
+        # image_description = get_image_description(f"data:image/jpeg;base64,{image}")
+        image_description = get_image_description(image)
         question += f"{image_description}"
     
     question_embedding = get_embedding(question)
