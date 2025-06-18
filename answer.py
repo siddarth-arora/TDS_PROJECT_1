@@ -77,29 +77,43 @@ def get_embedding(text: str) -> list:
 
 #     return response.text
 
+def get_image_description(image_base64: str, question: str):
+    url = "http://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
+    image_content = f"data:image/jpeg;base64,{image_base64}"
 
-def get_image_description(base64_image: str):
-    # Decode the base64 string
-    image_data = base64.b64decode(base64_image)
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {aiproxy_apikey}"
+    }
 
-    # Save to a temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".webp") as temp_file:
-        temp_file.write(image_data)
-        temp_file_path = temp_file.name
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Look at this image and tell me what you see related to this question: {question}"
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": image_content
+                        }
+                    }
+                ]
+            }
+        ]
+    }
 
-    # Upload and get response
-    client = genai.Client(api_key=genai_api_key)
-    my_file = client.files.upload(file=temp_file_path)
+    response = requests.post(url, headers=headers, json=payload)
 
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=[
-            my_file,
-            "Describe the study-related content in this image, including headings, formulas, and the main topic if identifiable."
-        ],
-    )
-
-    return response.text
+    if response.status_code == 200:
+        data = response.json()
+        return data["choices"][0]["message"]["content"]
+    else:
+        raise Exception(f"Error: {response.status_code} - {response.text}")
 
 
 def load_embeddings():
@@ -164,7 +178,7 @@ def answer(question: str, image: str = None):
     loaded_chunks, loaded_embeddings = load_embeddings()
     if image:
         # image_description = get_image_description(f"data:image/jpeg;base64,{image}")
-        image_description = get_image_description(image)
+        image_description = get_image_description(image, question)
         question += f"{image_description}"
     
     question_embedding = get_embedding(question)
