@@ -139,7 +139,7 @@ def generate_llm_response(question : str, context : str):
                 "Do NOT include explanations, markdown, or extra text outside this JSON format. ",
                 "The answer should be readable to a human being"
                 "If no links are relevant, return an empty links list. Keep the answer short and specific.",
-                "If you don't know the answer, respond with 'I don't know' and provide no links.",
+                "If the context does not include a clear and explicit answer, always say exactly: \"I don't know\". Do not guess or infer. Never assume future dates or information not present in the context."
         ],
         config=GenerateContentConfig(
             max_output_tokens=512,
